@@ -1,0 +1,39 @@
+parameters:
+  - name: environments 
+    type: object
+    default: ["dev"] 
+  - name: OUTPUT_FOLDER_PATH
+    type: string
+    displayName: Folder path to look for the snapshot folder 
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    exclude:
+    - scripts.v3/*
+
+stages:
+- ${{ each environment in parameters.environments }}: 
+  - stage: "${{ environment }}_deploy"
+    displayName: "Release developer portal config to ${{ environment }}"
+    jobs:
+      - deployment: release_dev_portal
+        displayName: Release Dev Portal
+        pool:
+          vmImage: ubuntu-latest
+        variables:
+        - group: "apim-dev-portal-${{ environment }}"       
+        # creates an environment if it doesn't exist
+        environment: "apim-dev-portal-${{ environment }}"
+        strategy:
+          # default deployment strategy, more coming...
+          runOnce:
+            deploy:
+               steps:
+                 - template: ./release-with-env.yaml 
+                   parameters:
+                     ENVIRONMENT: "${{ environment }}"
+                     OUTPUT_FOLDER_PATH: ${{ parameters.OUTPUT_FOLDER_PATH }}
+

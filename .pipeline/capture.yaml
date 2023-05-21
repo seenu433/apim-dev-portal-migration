@@ -1,0 +1,173 @@
+parameters:
+  - name: OUTPUT_FOLDER_PATH
+    type: string
+    displayName: Folder where you want to extract the artifacts
+trigger: none
+variables:
+  - group: apim-dev-portal
+  - name: System.Debug
+    value: true
+stages:
+  - stage: capture_dev_portal_config
+    displayName: Capture developer portal config
+    jobs:
+      - job: capture_dev_portal_config
+        displayName: Capture developer portal config
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - task: AzureCLI@2
+            displayName: Set extraction variables
+            inputs:
+              azureSubscription: $(SERVICE_CONNECTION_NAME)
+              scriptType: pscore
+              scriptLocation: inlineScript
+              inlineScript: >
+                Set-StrictMode -Version Latest
+
+                $ErrorActionPreference = "Stop"
+
+                $VerbosePreference = "Continue"
+
+                $InformationPreference = "Continue"
+
+
+                Write-Host "##vso[task.setvariable
+                issecret=true;variable=AZURE_BEARER_TOKEN]$(az account
+                get-access-token --query "accessToken" --output tsv)"
+
+                Write-Host "##vso[task.setvariable
+                issecret=true;variable=AZURE_CLIENT_ID]$env:servicePrincipalId"
+
+                Write-Host "##vso[task.setvariable
+                issecret=true;variable=AZURE_CLIENT_SECRET]$env:servicePrincipalKey"
+
+                Write-Host "##vso[task.setvariable
+                issecret=true;variable=AZURE_TENANT_ID]$env:tenantId"
+
+                Write-Host "##vso[task.setvariable
+                issecret=true;variable=AZURE_SUBSCRIPTION_ID]$(az account show
+                --query "id" --output tsv)"
+              addSpnToEnvironment: true
+              failOnStandardError: true
+
+          - task: Npm@1
+            displayName: Npm Install command
+            inputs:
+              command: "install"
+
+          - pwsh: |
+              node ./capture --subscriptionId  "$(AZURE_SUBSCRIPTION_ID)" --resourceGroupName "$(RESOURCE_GROUP_NAME)" --serviceName "$(APIM_INSTANCE_NAME)" --tenantId "$(AZURE_TENANT_ID)" --servicePrincipal "$(AZURE_CLIENT_ID)"  --servicePrincipalSecret "$(AZURE_CLIENT_SECRET)"  --folder "$(Build.ArtifactStagingDirectory)/snapshot"   
+            workingDirectory: "$(System.DefaultWorkingDirectory)/scripts.v3"
+            displayName: Run Capture   
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publish pipeline artifact
+            inputs:
+              targetPath: "$(Build.ArtifactStagingDirectory)"
+              artifactType: pipeline
+              artifactName: artifacts-from-capture     
+
+  - stage: create_template_branch
+    displayName: Create template branch
+    jobs:
+      - job: create_artifacts_pull_request
+        displayName: Create artifacts pull request
+        pool:
+          vmImage: windows-latest
+        steps:
+          - task: DownloadPipelineArtifact@2
+            displayName: Download pipeline artifact
+            inputs:
+              source: current
+              artifactName: artifacts-from-capture
+              targetPath: $(Pipeline.Workspace)/artifacts-from-capture
+          - task: PowerShell@2
+            displayName: Create pull request
+            inputs:
+              targetType: "inline"
+              script: |
+                Set-StrictMode -Version Latest
+                $ErrorActionPreference = "Stop"
+                $VerbosePreference = "Continue"
+                $InformationPreference = "Continue"
+
+                Write-Information "Installing Azure DevOps extension..."
+                az extension add --name "azure-devops"
+                az devops configure --defaults organization="$(System.TeamFoundationCollectionUri)" project="$(System.TeamProject)"
+
+                Write-Information "Creating temporary folder..."
+                $temporaryFolderPath = Join-Path "$(Agent.TempDirectory)" "artifacts-from-capture"
+                New-Item -Path "$temporaryFolderPath" -ItemType "Directory"
+
+                $branchName = "$(TARGET_BRANCH)"
+                $temporaryBranchName = "artifacts-from-capture-build-$(Build.BuildId)"
+                $repositoryName = "$(REPOSITORY_NAME)"
+                Write-Information "Cloning branch $branchName in repository $repositoryName..."
+                $cloneUrl = az repos show --repository "$repositoryName" --query "remoteUrl" --output tsv
+                Write-Information "Clone URL is $cloneUrl"
+                git -c http.extraheader="AUTHORIZATION: Bearer $(System.AccessToken)" clone --branch "$branchName" --depth 1 "$cloneUrl" "$temporaryFolderPath"
+                if ($LASTEXITCODE -ne 0) { throw "Cloning branch $branchName in repository $repositoryName failed." }
+
+                Write-Information "Creating temporary branch $temporaryBranchName from $branchName..."
+                git -C "$temporaryFolderPath" checkout -b "$temporaryBranchName" "$branchName"
+                if ($LASTEXITCODE -ne 0) { throw "Creating temporary branch $temporaryBranchName from $branchName failed." }
+
+                Write-Information "Creating artifacts folder..."
+                $artifactFolderPath = Join-Path "$temporaryFolderPath" "${{ parameters.OUTPUT_FOLDER_PATH }}"
+                if ((Test-Path -Path "$artifactFolderPath") -eq $false) {
+                    New-Item -Path "$artifactFolderPath" -ItemType "Directory"
+                }
+
+                Write-Information "Synchronizing artifacts..."
+                $extractorArtifactsFolderPath = Join-Path "$(Pipeline.Workspace)" "artifacts-from-capture"
+                if ("$(Agent.OS)" -like "*win*") {
+                    & robocopy "$extractorArtifactsFolderPath" "$artifactFolderPath" /zb /mir /mt
+                    if ($LASTEXITCODE -gt 7) { throw "Setting $artifactFolderPath to contents of $extractorArtifactsFolderPath failed." }
+                }
+                else {
+                    & rsync --verbose --archive --delete --force --recursive "$extractorArtifactsFolderPath/" "$artifactFolderPath/"
+                    if ($LASTEXITCODE -ne 0) { throw "Setting $artifactFolderPath to contents of $extractorArtifactsFolderPath failed." }
+                }
+
+                Write-Information "Validating that changes exist to be published..."
+                $gitStatus = git -C "$temporaryFolderPath" status --porcelain
+                if ($LASTEXITCODE -ne 0) { throw "Getting git status failed." }
+                if ([string]::IsNullOrWhiteSpace($gitStatus)) {
+                    Write-Information "No changes exist to be published."
+                    return
+                }
+                
+                Write-Information "Setting git user information..."
+                git config --global user.email "azuredevopsagent@azuredevops.com"
+                git config --global user.name "Azure Devops agent"
+
+                Write-Information "Adding changes..."
+                git -C "$temporaryFolderPath" add --all
+                if ($LASTEXITCODE -ne 0) { throw "Adding Git changes failed." }
+
+                Write-Information "Committing changes"
+                $commitOutput = git -C "$temporaryFolderPath" commit --message "Initial commit"
+                if ($LASTEXITCODE -ne 0) { 
+                  if ($commitOutput.Contains("nothing to commit, working tree clean")) {
+                    Write-Information "No changes exist to be published."
+                    return
+                  }
+                  throw "Committing Git changes failed." 
+                }
+
+                Write-Information "Pushing changes"
+                git -C "$temporaryFolderPath" -c http.extraheader="AUTHORIZATION: Bearer $(System.AccessToken)" push --set-upstream origin "$temporaryBranchName"
+                if ($LASTEXITCODE -ne 0) { throw "Pushing Git changes failed." }
+
+                Write-Information "Creating pull request..."
+                az repos pr create --source-branch "$temporaryBranchName" --target-branch "$branchName" --title "Merging artifacts from capture (Build $(Build.BuildId))" --squash --delete-source-branch "true" --repository "$repositoryName"
+                if ($LASTEXITCODE -ne 0) { throw "Creating pull request failed." }
+
+                Write-Information "Deleting temporary folder contents..."
+                Remove-Item -Path "$temporaryFolderPath" -Recurse -Force
+
+                Write-Information "Execution complete."
+              pwsh: true
+            env:
+              AZURE_DEVOPS_EXT_PAT: "$(System.AccessToken)"

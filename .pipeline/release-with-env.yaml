@@ -1,0 +1,76 @@
+parameters:
+  - name: ENVIRONMENT
+    type: string
+    displayName: Environment to display
+  - name: OUTPUT_FOLDER_PATH
+    type: string
+    displayName: Folder path to look for the snapshot folder     
+
+steps:
+  - script: echo Provided ENVIRONMENT was ${{ parameters.ENVIRONMENT }}
+    displayName: Print the name of the ENVIRONMENT if provided
+
+  - script: echo Provided SERVICE CONNECTION was $(SERVICE_CONNECTION_NAME)
+    displayName: Print the name of the SERVICE CONNECTION    
+
+  - checkout: self
+    fetchDepth: 0
+
+  - task: AzureCLI@2
+    displayName: Set extraction variables
+    inputs:
+      azureSubscription: $(SERVICE_CONNECTION_NAME)
+      scriptType: pscore
+      scriptLocation: inlineScript
+      inlineScript: >
+        Set-StrictMode -Version Latest
+
+        $ErrorActionPreference = "Stop"
+
+        $VerbosePreference = "Continue"
+
+        $InformationPreference = "Continue"
+
+
+        Write-Host "##vso[task.setvariable
+        issecret=true;variable=AZURE_BEARER_TOKEN]$(az account
+        get-access-token --query "accessToken" --output tsv)"
+
+        Write-Host "##vso[task.setvariable
+        issecret=true;variable=AZURE_CLIENT_ID]$env:servicePrincipalId"
+
+        Write-Host "##vso[task.setvariable
+        issecret=true;variable=AZURE_CLIENT_SECRET]$env:servicePrincipalKey"
+
+        Write-Host "##vso[task.setvariable
+        issecret=true;variable=AZURE_TENANT_ID]$env:tenantId"
+
+        Write-Host "##vso[task.setvariable
+        issecret=true;variable=AZURE_SUBSCRIPTION_ID]$(az account show
+        --query "id" --output tsv)"
+      addSpnToEnvironment: true
+      failOnStandardError: true
+
+  - task: Npm@1
+    displayName: Npm Install command
+    inputs:
+      command: "install"
+
+  - pwsh: |
+      node ./cleanup --subscriptionId  "$(AZURE_SUBSCRIPTION_ID)" --resourceGroupName "$(RESOURCE_GROUP_NAME)" --serviceName "$(APIM_INSTANCE_NAME)" --tenantId "$(AZURE_TENANT_ID)" --servicePrincipal "$(AZURE_CLIENT_ID)"  --servicePrincipalSecret "$(AZURE_CLIENT_SECRET)"   
+    workingDirectory: "$(System.DefaultWorkingDirectory)/scripts.v3"
+    displayName: Run Cleanup     
+
+  - pwsh: |
+      node ./generate --subscriptionId  "$(AZURE_SUBSCRIPTION_ID)" --resourceGroupName "$(RESOURCE_GROUP_NAME)" --serviceName "$(APIM_INSTANCE_NAME)" --tenantId "$(AZURE_TENANT_ID)" --servicePrincipal "$(AZURE_CLIENT_ID)"  --servicePrincipalSecret "$(AZURE_CLIENT_SECRET)" --publish true  --folder "../${{ parameters.OUTPUT_FOLDER_PATH }}/snapshot"   
+    workingDirectory: "$(System.DefaultWorkingDirectory)/scripts.v3"
+    displayName: Run Import
+
+  - pwsh: |
+      $jsonLeft = (Get-Content "../existingUrls.json" -Raw) | ConvertFrom-Json
+      $existingUrls = $jsonLeft.uri
+      $jsonRight = (Get-Content "../urls.${{ parameters.ENVIRONMENT }}.json" -Raw) | ConvertFrom-Json
+      $targetUrls = $jsonRight.uri
+      node ./updatecontenturl --destSubscriptionId  "$(AZURE_SUBSCRIPTION_ID)" --destResourceGroupName "$(RESOURCE_GROUP_NAME)" --destServiceName "$(APIM_INSTANCE_NAME)" --destTenantId "$(AZURE_TENANT_ID)" --destServicePrincipal "$(AZURE_CLIENT_ID)"  --destSecret "$(AZURE_CLIENT_SECRET)" --existingEnvUrls $existingUrls --destEnvUrls $targetUrls
+    workingDirectory: "$(System.DefaultWorkingDirectory)/scripts.v3"
+    displayName: Run Update Url
