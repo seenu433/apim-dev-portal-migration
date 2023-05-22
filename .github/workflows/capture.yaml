@@ -30,7 +30,7 @@ jobs:
           OUTPUT_FOLDER_PATH: ${{ github.event.inputs.OUTPUT_FOLDER_PATH }}  
         run: |     
           npm install
-          node ./capture --subscriptionId  "${{ env.AZURE_SUBSCRIPTION_ID }}" --resourceGroupName "${{ env.RESOURCE_GROUP_NAME }}" --serviceName "${{ env.APIM_INSTANCE_NAME }}" --tenantId "${{ env.AZURE_TENANT_ID }}" --servicePrincipal "${{ env.AZURE_CLIENT_ID }}"  --servicePrincipalSecret "${{ env.AZURE_CLIENT_SECRET }}"  --folder "${{ GITHUB.WORKSPACE }}/${{ env.OUTPUT_FOLDER_PATH }}/snapshot"   
+          node ./scripts.v3/capture --subscriptionId  "${{ env.AZURE_SUBSCRIPTION_ID }}" --resourceGroupName "${{ env.RESOURCE_GROUP_NAME }}" --serviceName "${{ env.APIM_INSTANCE_NAME }}" --tenantId "${{ env.AZURE_TENANT_ID }}" --servicePrincipal "${{ env.AZURE_CLIENT_ID }}"  --servicePrincipalSecret "${{ env.AZURE_CLIENT_SECRET }}"  --folder "${{ GITHUB.WORKSPACE }}/${{ env.OUTPUT_FOLDER_PATH }}/snapshot"   
         shell: pwsh
 
       - name: publish artifact
