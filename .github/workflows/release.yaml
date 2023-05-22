@@ -16,12 +16,16 @@ on:
         default: 'artifacts'
 
 jobs:
-  release:
-    strategy:
-      matrix:
-        environment: ['dev', 'stage']
+  release-dev:
     uses: ./.github/workflows/release-with-env.yaml
     with:
-      ENVIRONMENT: ${{ matrix.environment }}
+      ENVIRONMENT: dev
       OUTPUT_FOLDER_PATH: ${{ github.event.inputs.OUTPUT_FOLDER_PATH }}
     secrets: inherit
+  release-stage:
+    needs: release-dev
+    uses: ./.github/workflows/release-with-env.yaml
+    with:
+      ENVIRONMENT: stage
+      OUTPUT_FOLDER_PATH: ${{ github.event.inputs.OUTPUT_FOLDER_PATH }}
+    secrets: inherit    

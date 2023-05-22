@@ -23,7 +23,20 @@ jobs:
         with:
           node-version: 18  
 
-      - name: Run Release
+      - name: Run Cleanup
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          RESOURCE_GROUP_NAME: ${{ secrets.RESOURCE_GROUP_NAME }}
+          APIM_INSTANCE_NAME: ${{ secrets.APIM_INSTANCE_NAME }}
+        run: |     
+          npm install
+          node ./scripts.v3/cleanup --subscriptionId  "${{ env.AZURE_SUBSCRIPTION_ID }}" --resourceGroupName "${{ env.RESOURCE_GROUP_NAME }}" --serviceName "${{ env.APIM_INSTANCE_NAME }}" --tenantId "${{ env.AZURE_TENANT_ID }}" --servicePrincipal "${{ env.AZURE_CLIENT_ID }}"  --servicePrincipalSecret "${{ env.AZURE_CLIENT_SECRET }}"
+        shell: pwsh
+
+      - name: Run Generate
         env:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
@@ -33,14 +46,21 @@ jobs:
           APIM_INSTANCE_NAME: ${{ secrets.APIM_INSTANCE_NAME }}
           OUTPUT_FOLDER_PATH: ${{ inputs.OUTPUT_FOLDER_PATH }}  
         run: |     
-          npm install
-          node ./scripts.v3/cleanup --subscriptionId  "${{ env.AZURE_SUBSCRIPTION_ID }}" --resourceGroupName "${{ env.RESOURCE_GROUP_NAME }}" --serviceName "${{ env.APIM_INSTANCE_NAME }}" --tenantId "${{ env.AZURE_TENANT_ID }}" --servicePrincipal "${{ env.AZURE_CLIENT_ID }}"  --servicePrincipalSecret "${{ env.AZURE_CLIENT_SECRET }}"
-          node ./scripts.v3/generate --subscriptionId  "${{ env.AZURE_SUBSCRIPTION_ID }}" --resourceGroupName "${{ env.RESOURCE_GROUP_NAME }}" --serviceName "${{ env.APIM_INSTANCE_NAME }}" --tenantId "${{ env.AZURE_TENANT_ID }}" --servicePrincipal "${{ env.AZURE_CLIENT_ID }}"  --servicePrincipalSecret "${{ env.AZURE_CLIENT_SECRET }}"  --folder "${{ GITHUB.WORKSPACE }}/${{ env.OUTPUT_FOLDER_PATH }}/snapshot"  
+           node ./scripts.v3/generate --subscriptionId  "${{ env.AZURE_SUBSCRIPTION_ID }}" --resourceGroupName "${{ env.RESOURCE_GROUP_NAME }}" --serviceName "${{ env.APIM_INSTANCE_NAME }}" --tenantId "${{ env.AZURE_TENANT_ID }}" --servicePrincipal "${{ env.AZURE_CLIENT_ID }}"  --servicePrincipalSecret "${{ env.AZURE_CLIENT_SECRET }}"  --folder "${{ GITHUB.WORKSPACE }}/${{ env.OUTPUT_FOLDER_PATH }}/snapshot"  
+        shell: pwsh        
 
+      - name: Run Update Urls
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          RESOURCE_GROUP_NAME: ${{ secrets.RESOURCE_GROUP_NAME }}
+          APIM_INSTANCE_NAME: ${{ secrets.APIM_INSTANCE_NAME }}
+        run: |     
           $jsonLeft = (Get-Content "existingUrls.json" -Raw) | ConvertFrom-Json
           $existingUrls = $jsonLeft.uri
-          $jsonRight = (Get-Content "urls.${{ env.ENVIRONMENT }}.json" -Raw) | ConvertFrom-Json
+          $jsonRight = (Get-Content "urls.${{ inputs.ENVIRONMENT }}.json" -Raw) | ConvertFrom-Json
           $targetUrls = $jsonRight.uri
           node ./scripts.v3/updatecontenturl --destSubscriptionId  "${{ env.AZURE_SUBSCRIPTION_ID }}"  --destResourceGroupName "${{ env.RESOURCE_GROUP_NAME }}" --destServiceName "${{ env.APIM_INSTANCE_NAME }}" --destTenantId "${{ env.AZURE_TENANT_ID }}" --destServicePrincipal "${{ env.AZURE_CLIENT_ID }}"  --destSecret "${{ env.AZURE_CLIENT_SECRET }}" --existingEnvUrls $existingUrls --destEnvUrls $targetUrls
-
         shell: pwsh
