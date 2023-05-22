@@ -1,0 +1,27 @@
+name: Run - Release
+
+on:
+  # Triggers the workflow on pull request events but only for the main branch
+  pull_request:
+    branches: [main]
+    types: [closed]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      OUTPUT_FOLDER_PATH:
+        description: 'Folder where you want to extract the artifacts'     
+        required: true
+        type: string
+        default: 'artifacts'
+
+jobs:
+  release:
+    strategy:
+      matrix:
+        environment: ['dev', 'stage']
+    uses: ./.github/workflows/release-with-env.yaml
+    with:
+      ENVIRONMENT: ${{ matrix.environment }}
+      OUTPUT_FOLDER_PATH: ${{ github.event.inputs.OUTPUT_FOLDER_PATH }}
+    secrets: inherit
