@@ -1,4 +1,6 @@
-# apim-dev-portal-migration
+# APIM Developer Portal Migration
+
+## Steps for Azure DevOps
 
 1. Create [Service Connections](https://learn.microsoft.com/en-us/azure/devops/pipelines/library/service-endpoints?view=azure-devops&tabs=yaml#create-a-service-connection) in Azure DevOps for each of the APIM instances you want to migrate from and to.
 
@@ -59,3 +61,29 @@
     ```
 
     These should match the suffix of the names of the variable groups created in step 3.
+
+## Steps for GitHub Actions
+
+1. Create Service Principals for each of the APIM instances you want to migrate from and to. The service principal will need the following permissions:
+
+    ```azurecli
+    az ad sp create-for-rbac -n "{name_of_the_sp}" --role Contributor --scopes /subscriptions/{subscriptionId}/resourceGroups/{apim_resource_group} --sdk-auth
+    ```
+
+2. Create environments for each of the apim instances under *{repository} -> Settings -> Environments* with the below secrets:
+
+    | Secret Name | Description |
+    | ------------- | ----------- |
+    |APIM_INSTANCE_NAME |The name of the APIM instance to migrate from |
+    |RESOURCE_GROUP_NAME|The name of the resource group the APIM instance is in|
+    |AZURE_CLIENT_ID|The client id of the service principal|
+    |AZURE_CLIENT_SECRET|The client secret of the service principal|
+    |AZURE_SUBSCRIPTION_ID|The subscription id of the apim resource |
+    |AZURE_TENANT_ID|The tenant id of the service principal|
+
+    *Note:* The names of the environments can be dev, stage etc. If using different names, update the capture.yaml and release.yaml for the environment names.
+
+3. Grant permissions for the actions to create a PR. Set *Read and write permissions* and "Allow GitHub Actions to create and approve pull requests" under *{repository} -> Settings -> Actions -> General -> Workflow permissions*.
+
+4. Update the *release.yaml* to reflect the stages you want to deploy to. 
+
