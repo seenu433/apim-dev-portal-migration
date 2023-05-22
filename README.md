@@ -27,31 +27,35 @@
 6. Run the pipeline with the following parameters:
 
     OUTPUT_FOLDER_PATH: The name of the folder to save the snapshot to in the repository.
-    
-    _Note_: Pipeline will need approval to access the variable group for the first time.
+
+    *Note*: Pipeline will need approval to access the variable group for the first time.
 
 7. Create a pipeline in Azure DevOps with the yaml from file ***release.yaml***. This will create a pipeline that will deploy the APIM developer portal snapshot to the target environment(s).
 
 8. Link the variable groups created for each environment to the pipeline. Edit the pipeline, select Triggers from the ellipsis menu and navigate to the Variables tab. Add the variable groups to the pipeline.
 
 9. Create url overwrite files for each environment in the format ***urls.{env}.json***. The contents of the file should be as
+
     ```json
     {
         uri: "https://uri1.com, https://uri2.com"
     }
     ```
+
     Update the existing uris in the snapshot in the file ***existingUrls.json***
 
-    _Note:_ This is an optional step and is only required if you want to overwrite the urls in the snapshot with the urls in the file.     
+    *Note*: This is an optional step and is only required if you want to overwrite the urls in the snapshot with the urls in the file.
 
 10. Run the pipeline with the following parameters:
 
     OUTPUT_FOLDER_PATH: The name of the folder the snapshot was saved to in the repository.
 
     ENVIRONMENTS: The name of the environments to deploy to. For ex:
-    ```
+
+    ```json
         - dev
         - stage
         - prod
     ```
+
     These should match the suffix of the names of the variable groups created in step 3.

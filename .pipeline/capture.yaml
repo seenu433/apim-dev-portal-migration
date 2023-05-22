@@ -2,6 +2,7 @@ parameters:
   - name: OUTPUT_FOLDER_PATH
     type: string
     displayName: Folder where you want to extract the artifacts
+    default: artifacts
 trigger: none
 variables:
   - group: apim-dev-portal

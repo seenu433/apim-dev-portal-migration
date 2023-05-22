@@ -5,6 +5,7 @@ parameters:
   - name: OUTPUT_FOLDER_PATH
     type: string
     displayName: Folder path to look for the snapshot folder 
+    default: artifacts
 
 trigger:
   branches:
