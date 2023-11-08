@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       OUTPUT_FOLDER_PATH:
-        description: 'Folder where you want to public the artifacts from'
+        description: 'Folder where you want to pulish the artifacts from'
         required: true
         type: string
         default: 'artifacts'
@@ -26,6 +26,6 @@ jobs:
     needs: release-dev
     uses: ./.github/workflows/release-with-env.yaml
     with:
-      ENVIRONMENT: prod
+      ENVIRONMENT: stage
       OUTPUT_FOLDER_PATH: ${{ github.event.inputs.OUTPUT_FOLDER_PATH }}
     secrets: inherit
