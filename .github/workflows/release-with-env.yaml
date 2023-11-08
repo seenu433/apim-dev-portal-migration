@@ -35,8 +35,8 @@ jobs:
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          RESOURCE_GROUP_NAME: ${{ vars.RESOURCE_GROUP_NAME }}
-          APIM_INSTANCE_NAME: ${{ vars.APIM_INSTANCE_NAME }}
+          RESOURCE_GROUP_NAME: ${{ secrets.RESOURCE_GROUP_NAME }}
+          APIM_INSTANCE_NAME: ${{ secrets.APIM_INSTANCE_NAME }}
         run: |     
           npm install
           node ./scripts.v3/cleanup --subscriptionId  "${{ env.AZURE_SUBSCRIPTION_ID }}" --resourceGroupName "${{ env.RESOURCE_GROUP_NAME }}" --serviceName "${{ env.APIM_INSTANCE_NAME }}" --tenantId "${{ env.AZURE_TENANT_ID }}" --servicePrincipal "${{ env.AZURE_CLIENT_ID }}"  --servicePrincipalSecret "${{ env.AZURE_CLIENT_SECRET }}"
@@ -48,8 +48,8 @@ jobs:
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          RESOURCE_GROUP_NAME: ${{ vars.RESOURCE_GROUP_NAME }}
-          APIM_INSTANCE_NAME: ${{ vars.APIM_INSTANCE_NAME }}
+          RESOURCE_GROUP_NAME: ${{ secrets.RESOURCE_GROUP_NAME }}
+          APIM_INSTANCE_NAME: ${{ secrets.APIM_INSTANCE_NAME }}
           OUTPUT_FOLDER_PATH: ${{ env.output_path }}
         run: |     
            node ./scripts.v3/generate --subscriptionId  "${{ env.AZURE_SUBSCRIPTION_ID }}" --resourceGroupName "${{ env.RESOURCE_GROUP_NAME }}" --serviceName "${{ env.APIM_INSTANCE_NAME }}" --tenantId "${{ env.AZURE_TENANT_ID }}" --servicePrincipal "${{ env.AZURE_CLIENT_ID }}"  --servicePrincipalSecret "${{ env.AZURE_CLIENT_SECRET }}"  --folder "${{ GITHUB.WORKSPACE }}/${{ env.OUTPUT_FOLDER_PATH }}/snapshot"  
@@ -61,8 +61,8 @@ jobs:
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          RESOURCE_GROUP_NAME: ${{ vars.RESOURCE_GROUP_NAME }}
-          APIM_INSTANCE_NAME: ${{ vars.APIM_INSTANCE_NAME }}
+          RESOURCE_GROUP_NAME: ${{ secrets.RESOURCE_GROUP_NAME }}
+          APIM_INSTANCE_NAME: ${{ secrets.APIM_INSTANCE_NAME }}
         run: |     
           $jsonLeft = (Get-Content "existingUrls.json" -Raw) | ConvertFrom-Json
           $existingUrls = $jsonLeft.uri -replace ",\s*", "," # Remove spaces between items
