@@ -40,7 +40,7 @@
 
     ```json
     {
-        uri: "https://uri1.com, https://uri2.com"
+        uri: "https://uri1.com,https://uri2.com"
     }
     ```
 
@@ -81,9 +81,24 @@
     |AZURE_SUBSCRIPTION_ID|The subscription id of the apim resource |
     |AZURE_TENANT_ID|The tenant id of the service principal|
 
-    *Note:* The names of the environments can be dev, stage etc. If using different names, update the capture.yaml and release.yaml for the environment names.
+    *Note:* The names of the environments can be dev, stage etc. If using different names, update the capture.yaml and release.yaml for the environment names. This would also be a good time to setup [deployment protection rules](https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment#deployment-protection-rules) if you wish in the environment settings of GitHub.
 
 3. Grant permissions for the actions to create a PR. Set *Read and write permissions* and "Allow GitHub Actions to create and approve pull requests" under *{repository} -> Settings -> Actions -> General -> Workflow permissions*.
 
 4. Update the *release.yaml* to reflect the stages you want to deploy to. 
 
+5. By default the folder used to store the Developer Portal artifacts in this repo is `artifacts` as referenced in the [release-with-env.yaml file](.github/workflows/release-with-env.yaml#L22). If you would like to use a different folder name, you will need to update that file first.
+
+6. Create url overwrite files for each environment in the format ***urls.{env}.json***. The contents of the file should be as
+
+    ```json
+    {
+        uri: "https://uri1.com,https://uri2.com"
+    }
+    ```
+
+    Update the existing uris in the snapshot in the file ***existingUrls.json***
+
+    *Note*: This is an optional step and is only required if you want to overwrite the urls in the snapshot with the urls in the file.
+
+7. Run the `capture.yaml` pipeline and provide a folder to store the artifacts in, the default is `artifacts`. That will pull in the Developer Portal artifacts that are in the current dev environment (this is set in the [capture.yaml](.github/workflows/capture.yaml#L15) file, so if you want to pull from a different environment update that). Once that is complete, you can see the PR that was created so you can merge it. Once that is merged the `release.yaml` pipeline will automatically trigger.
