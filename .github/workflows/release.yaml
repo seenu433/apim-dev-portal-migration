@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       OUTPUT_FOLDER_PATH:
-        description: 'Folder where you want to pulish the artifacts from'
+        description: 'Folder where you want to publish the artifacts from'
         required: true
         type: string
         default: 'artifacts'
