@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       OUTPUT_FOLDER_PATH:
-        description: 'Folder where you want to extract the artifacts'     
+        description: 'Folder where you want to publish the artifacts from'
         required: true
         type: string
         default: 'artifacts'
@@ -28,4 +28,4 @@ jobs:
     with:
       ENVIRONMENT: stage
       OUTPUT_FOLDER_PATH: ${{ github.event.inputs.OUTPUT_FOLDER_PATH }}
-    secrets: inherit    
+    secrets: inherit

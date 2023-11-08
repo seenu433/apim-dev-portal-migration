@@ -15,6 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.ENVIRONMENT }}
     steps:
+      - name: Set default value
+        id: defaultname
+        run: |
+          USER_INPUT_OUTPUT_FOLDER_PATH=${{ inputs.OUTPUT_FOLDER_PATH }}
+          echo "output_path=${USER_INPUT_OUTPUT_FOLDER_PATH:-"artifacts"}" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v3
         with:
           fetch-depth: 2
@@ -44,7 +50,7 @@ jobs:
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           RESOURCE_GROUP_NAME: ${{ secrets.RESOURCE_GROUP_NAME }}
           APIM_INSTANCE_NAME: ${{ secrets.APIM_INSTANCE_NAME }}
-          OUTPUT_FOLDER_PATH: ${{ inputs.OUTPUT_FOLDER_PATH }}  
+          OUTPUT_FOLDER_PATH: ${{ env.output_path }}
         run: |     
            node ./scripts.v3/generate --subscriptionId  "${{ env.AZURE_SUBSCRIPTION_ID }}" --resourceGroupName "${{ env.RESOURCE_GROUP_NAME }}" --serviceName "${{ env.APIM_INSTANCE_NAME }}" --tenantId "${{ env.AZURE_TENANT_ID }}" --servicePrincipal "${{ env.AZURE_CLIENT_ID }}"  --servicePrincipalSecret "${{ env.AZURE_CLIENT_SECRET }}"  --folder "${{ GITHUB.WORKSPACE }}/${{ env.OUTPUT_FOLDER_PATH }}/snapshot"  
         shell: pwsh        
@@ -59,8 +65,8 @@ jobs:
           APIM_INSTANCE_NAME: ${{ secrets.APIM_INSTANCE_NAME }}
         run: |     
           $jsonLeft = (Get-Content "existingUrls.json" -Raw) | ConvertFrom-Json
-          $existingUrls = $jsonLeft.uri
+          $existingUrls = $jsonLeft.uri -replace ",\s*", "," # Remove spaces between items
           $jsonRight = (Get-Content "urls.${{ inputs.ENVIRONMENT }}.json" -Raw) | ConvertFrom-Json
-          $targetUrls = $jsonRight.uri
+          $targetUrls = $jsonRight.uri -replace ",\s*", "," # Remove spaces between items
           node ./scripts.v3/updatecontenturl --destSubscriptionId  "${{ env.AZURE_SUBSCRIPTION_ID }}"  --destResourceGroupName "${{ env.RESOURCE_GROUP_NAME }}" --destServiceName "${{ env.APIM_INSTANCE_NAME }}" --destTenantId "${{ env.AZURE_TENANT_ID }}" --destServicePrincipal "${{ env.AZURE_CLIENT_ID }}"  --destSecret "${{ env.AZURE_CLIENT_SECRET }}" --existingEnvUrls $existingUrls --destEnvUrls $targetUrls
         shell: pwsh
